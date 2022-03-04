@@ -24,7 +24,7 @@ def compulsivity_score(score_final):
         return 'Não Possui Compulsão Alimentar Periódica'
     else:
         return 'Compulsão Alimentar Periódica Moderada'
-    
+
 
 def main():
     st.title('''Escala de Compulsão Alimentar Periódica''')         
