@@ -1,10 +1,12 @@
 from contextlib import suppress
 import os
 import streamlit as st
+from datetime import datetime
 import pandas as pd 
 import numpy as np
 import regex as re
 import csv
+import requests
 
 
 @st.cache(suppress_st_warning=True)
@@ -39,7 +41,7 @@ def compulsivity_score(score_final):
 @st.cache(suppress_st_warning=True)
 def write_data(dict):
 
-    fields = ['nome', 'email', 'resultado'] 
+    fields = ['nome', 'email', 'data', 'resultado'] 
         
     # name of csv file 
     filename = "data/submmited_data.csv"
@@ -55,6 +57,36 @@ def write_data(dict):
         # writing data rows
         writer.writerow(dict)
 
+@st.cache(suppress_st_warning=True)
+def send_telegram_message():
+    token = '5184927866:AAGWjl15pcIT_6qrveDpyabJLQ5BZ03znbM'
+    chat_id = -701571131
+    message_params = {
+        'chat_id': chat_id,
+        'text': 'Olá, mais uma pessoa respondeu ao seu questionário de alimentação compulsiva, veja abaixo:',
+    }
+    url_message = f'https://api.telegram.org/bot{token}/sendMessage'
+
+    requests.post(url_message, data=message_params)
+
+@st.cache(suppress_st_warning=True)
+def send_telegram_document():
+    token = '5184927866:AAGWjl15pcIT_6qrveDpyabJLQ5BZ03znbM'
+    chat_id = -701571131
+    document = open('data/submmited_data.csv', 'rb')
+    document_params = {'document': document}
+    url_document = f'https://api.telegram.org/bot{token}/sendDocument'
+
+    requests.post(
+        url_document, 
+        data = {
+            'chat_id': chat_id, 
+            # 'caption': message_params['text'], 
+            # 'parse_mode': message_params['parse_mode']
+        }, 
+        files=document_params
+    )
+
 def main():
     st.set_page_config(
      page_title="Mariana Pontes - Nutri",
@@ -63,18 +95,18 @@ def main():
      initial_sidebar_state="expanded",
      menu_items={
          'Report a bug': "https://github.com/yancunha/compulsive-eating-survey/issues",
-         'About': "Dúvidas Pelo Instagram: https://www.instagram.com/_ma_pontes/ ou Whatsapp: "
+         'About': "Dúvidas Pelo Instagram: https://www.instagram.com/_ma_pontes/"
         }
     )
 
     st.markdown('''
         # Bem vindo :blush:!
 
-        Pensando em uma maneira simples e eficiente de pré-diagnosticar transtornos alimentares, pesquisadores desenvolveram esse questionário, aqui apresentado, para que junto com o paciente, fosse discutido e observado o comportamento alimentar periódico de cada individuo.
+        Pensando em uma maneira simples e eficiente de pré-diagnosticar transtornos alimentares, pesquisadores desenvolveram essa pesquisa, aqui apresentado, para que junto com o paciente, fosse discutido e observado o comportamento alimentar periódico de cada individuo.
 
         Sabe-se que os **transtornos alimentares** têm causas **múltiplas**, envolvendo, quase sempre na psiquiatria, predisposições genéticas e constitucionais, influências socioculturais e as vulnerabilidades psicológicas pessoais, que podem desencadear muitas patologias orgânicas como dislipidemias, obesidade, hipertensão, diabetes entre outras.
 
-        **O tratamento deve ser abordado de forma conjunta com intervenções psicológicas e nutricionais**, mas trouxemos a vocês o questionário, para que você possa refletir sobre seu comportamento alimentar e procurar ajuda, se assim necessário.
+        **O tratamento deve ser abordado de forma conjunta com intervenções psicológicas e nutricionais**, mas trouxemos a vocês a pesquisa, para que você possa refletir sobre seu comportamento alimentar e procurar ajuda, se assim necessário.
 
         Após marcas as marcações, ocorrerá uma correção automática considerando **três** escalas:
           - **Resultado 1:** **Sem** Compulsão Alimentar.
@@ -85,11 +117,6 @@ def main():
     ''')
 
     st.subheader('Escala de Compulsão Alimentar Periódica')
-    
-    st.markdown('''**Se preferir, insira seu nome e email abaixo:** ''')
-    name = st.text_input('Nome:')
-    email = st.text_input('Email:')
-
     st.markdown('**Você encontrará abaixo grupos de afirmações numeradas. Leia todas as afirmações em cada grupo e marque aquela que melhor descreve o modo como você se sente em relação aos problemas que tem para controlar seu comportamento alimentar.**')
 
     afirmacao1 = st.radio(
@@ -234,6 +261,10 @@ def main():
     )
     score16 =+ load_afir(afirmacao16, 16)
 
+    st.markdown('''**Se preferir, insira seu nome e email abaixo(**não** é obrigatório :wink:):** ''')
+    name = st.text_input('Nome:')
+    email = st.text_input('Email:')
+
     submitted = st.button("Clique aqui para ver o Resultado.")
     if submitted:
         score_final = (
@@ -256,11 +287,12 @@ def main():
         )
         classificacao = compulsivity_score(score_final)
         st.write(classificacao)
-        st.write('**Qualquer dúvida sobre esse teste, me encontre aqui: https://www.instagram.com/_ma_pontes/ :blush:**')
+        st.write('**Quer bater um papo sobre esse resultado? Me encontre aqui: https://www.instagram.com/_ma_pontes/ :blush:**')
         #write data
         my_dict = {
             "nome":[],
             "email":[],
+            "data":datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             "resultado":[]
         }
         if (name or email):
@@ -268,11 +300,15 @@ def main():
             my_dict['email'] = email
             my_dict['resultado'] = classificacao
             write_data(my_dict)
+            send_telegram_message()
+            send_telegram_document()
         else:
             my_dict['nome'] = name
             my_dict['email'] = email
             my_dict['resultado'] = classificacao
             write_data(my_dict)
+            send_telegram_message()
+            send_telegram_document()
 
 
 if __name__=='__main__':
